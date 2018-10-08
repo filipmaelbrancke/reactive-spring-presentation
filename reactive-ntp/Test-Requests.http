@@ -1,0 +1,7 @@
+### yo dawg, i heard u like monads so i put some monads in ur java so u can flatmap while u enterprise
+
+GET http://localhost:8080/api/test
+Content-Type: application/json
+
+
+###
