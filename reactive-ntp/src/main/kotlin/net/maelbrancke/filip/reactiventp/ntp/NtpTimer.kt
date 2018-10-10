@@ -1,6 +1,8 @@
 package net.maelbrancke.filip.reactiventp.ntp
 
 import org.apache.commons.net.ntp.NTPUDPClient
+import org.nield.kotlinstatistics.median
+import org.nield.kotlinstatistics.medianBy
 import reactor.core.publisher.Flux
 import reactor.core.publisher.FluxSink
 import reactor.core.publisher.Mono
@@ -9,7 +11,8 @@ import reactor.core.scheduler.Schedulers
 import java.io.IOException
 import java.net.InetAddress
 import java.net.UnknownHostException
-import java.util.function.Function
+
+typealias NtpPoolHostName = String
 
 class NtpTimer {
 
@@ -29,7 +32,7 @@ class NtpTimer {
     private val connectionTimeout = 10_000
     private var timingInfo: NtpTiming? = null
 
-    fun initialize(ntpPoolAddress: String = DEFAULT_NTP_POOL): Mono<Time> {
+    fun initialize(ntpPoolAddress: NtpPoolHostName = DEFAULT_NTP_POOL): Mono<Time> {
         return if (initialized) {
             Mono.just(calculateNow())
         } else {
@@ -38,50 +41,16 @@ class NtpTimer {
         }
     }
 
-    private fun initializeNtp(ntpPoolAddress: String): Mono<NtpTiming> {
-        /*val compose: Mono<InetAddress> = Mono
-                .just(ntpPoolAddress)
-                .compose(resolveNtpPoolToIpAddresses())*/
+    private fun initializeNtp(ntpPoolAddress: NtpPoolHostName): Mono<NtpTiming> {
         return Flux
                 .just(ntpPoolAddress)
-                //.compose(resolveNtpPoolToIpAddresses())
-                /*.compose { ntpPoolAddressFlux ->
-                    ntpPoolAddressFlux
-                            .publishOn(Schedulers.parallel())
-                            .flatMap { ntpPoolAddress ->
-                                try {
-                                    InetAddress.getAllByName(ntpPoolAddress).toFlux()
-                                } catch (e: UnknownHostException) {
-                                    e.toFlux<InetAddress>()
-                                }
-                            }
-                }*/
-                //.compose(resolveNtpPoolAddressToIpAddressesFunction)
                 .compose(resolveNtpPoolAddressToIpAddresses())
-
+                .compose(performNtpAlgorithm())
                 .doOnNext { t -> System.out.println("initialized:: $t") }
                 .next()
-                .map { inetAddress -> NtpTiming(1L, 1L) }
-
-
-                //.compose(performNtpAlgorithm())
-
-                /*.doOnNext { ipAddress -> System.out.println(ipAddress) }
-                .map { inetAddress -> NtpTiming(1L, 1L) }*/
     }
 
-    val resolveNtpPoolAddressToIpAddressesFunction = { ntpPoolAddressFlux: Flux<String> ->
-        ntpPoolAddressFlux
-            .publishOn(Schedulers.parallel())
-            .flatMap { ntpPoolAddress ->
-                try {
-                    InetAddress.getAllByName(ntpPoolAddress).toFlux()
-                } catch (e: UnknownHostException) {
-                    e.toFlux<InetAddress>()
-                }
-            } }
-
-    private fun resolveNtpPoolAddressToIpAddresses(): (Flux<String>) -> Flux<InetAddress> = { ntpPoolAddressFlux ->
+    private fun resolveNtpPoolAddressToIpAddresses(): (Flux<NtpPoolHostName>) -> Flux<InetAddress> = { ntpPoolAddressFlux ->
         ntpPoolAddressFlux
                 .publishOn(Schedulers.parallel())
                 .flatMap { ntpPoolAddress ->
@@ -93,94 +62,66 @@ class NtpTimer {
                 }
     }
 
-    /*private fun resolveNtpPoolToIpAddresses(): Function<Mono<String>, Flux<InetAddress>> {
-        return Function { ntpPool ->
-            ntpPool
-                    .publishOn(Schedulers.parallel())
-                    *//*.flatMapIterable { ntpPoolAddress ->
-                        return@flatMapIterable InetAddress.getAllByName(ntpPoolAddress)
-                    }*//*
-                    .flatMapMany { ntpPoolAddress ->
-                        try {
-                            InetAddress.getAllByName(ntpPoolAddress).toFlux()
-                        } catch (e: UnknownHostException) {
-                            e.toFlux<InetAddress>()
-                        }
-                    }
-        }
-    }*/
-
-    private fun performNtpAlgorithmShizzle(): (Flux<InetAddress>) -> Mono<NtpTiming> = { ipAddresses ->
+    private fun performNtpAlgorithm(): (Flux<InetAddress>) -> Mono<NtpTiming> = { ipAddresses ->
         ipAddresses
                 .flatMap(bestResponseAgainstSingleIp(5))
                 .take(5)
                 .collectList()
                 .filter { ntpTimings -> ntpTimings.isNotEmpty() }
-                .map(filterMedianResponse())
+                .map(filterMedian())
+                .doOnNext { ntpTiming ->
+                    cacheTimingInfo(ntpTiming)
+                }
     }
 
-    private fun performNtpAlgorithm(): Function<Flux<InetAddress>, Mono<NtpTiming>> {
-        return Function { inetAddress ->
+    private fun bestResponseAgainstSingleIp(repeatCount: Int): (InetAddress) -> Flux<NtpTiming> = { singleIp ->
+        Flux
+                .just(singleIp)
+                .repeat(repeatCount.toLong())
+                .flatMap { ip ->
 
-            inetAddress
-                    .flatMap(bestResponseAgainstSingleIp(5))
-                    .take(5)
-                    .collectList()
-                    .filter { ntpTimings -> !ntpTimings.isEmpty() }
-                    .map(filterMedianResponse())
+                    Flux.create<NtpTiming>({ sink ->
+                        System.out.println("requesting time from $ip")
+                        try {
+                            sink.next(requestTime(ip))
+                            sink.complete()
+                        } catch (e:IOException) {
+                            sink.error(e)
+                        }
+                    },
+                            FluxSink.OverflowStrategy.BUFFER)
+                            .subscribeOn(Schedulers.parallel())
+                            .doOnError { error: Throwable? -> System.out.println("Error requesting time : $error") }
+                            .retry(retryCount.toLong())
 
-            Mono.just(NtpTiming(1L, 1L))
-            //NtpTiming(1L, 1L)
-        }
+                }
+                .collectList()
+                .map(getTimingWithFastestRoundTrip())
+                .flux()
     }
 
-    private fun bestResponseAgainstSingleIp(repeatCount: Int): Function<InetAddress, Flux<NtpTiming>> {
-        return Function { singleIp ->
-            Flux
-                    .just(singleIp)
-                    .repeat(repeatCount.toLong())
-                    .flatMap { ip ->
-
-                        Flux.create<NtpTiming>({ sink ->
-                            System.out.println("requesting time from $ip")
-                            try {
-                                sink.next(requestTime(ip))
-                                sink.complete()
-                            } catch (e:IOException) {
-                                sink.error(e)
-                            }
-                        },
-                                FluxSink.OverflowStrategy.BUFFER)
-                                .subscribeOn(Schedulers.parallel())
-                                .doOnError { error: Throwable? -> System.out.println("Error requesting time : $error") }
-                                .retry(retryCount.toLong())
-
-                        // gather ntp timing !!!
-                        //Flux.just(NtpTiming(1L, 1L))
-                    }
-                    .collectList()
-                    .map(filterLeastRoundTripDelay())
-                    .flux()
-        }
+    private fun getTimingWithFastestRoundTrip(): (List<NtpTiming>) -> NtpTiming = { ntpTimings ->
+        val fastestNtpMeasurement = ntpTimings
+                .asSequence()
+                .sortedBy(NtpTiming::delay)
+                .first()
+        fastestNtpMeasurement
     }
 
-    private fun filterLeastRoundTripDelay(): Function<List<NtpTiming>, NtpTiming> {
-        return Function { ntpTimings ->
-            val ntpTimingWithBestRoundTrip = ntpTimings
-                    .sortedBy(NtpTiming::delay)
-                    .first()
+    private fun filterMedian(): (List<NtpTiming>) -> NtpTiming = { ntpTimings ->
+        val sortedByDuration = ntpTimings
+                .sortedBy(NtpTiming::delay)
 
-            ntpTimingWithBestRoundTrip
-        }
-    }
+        sortedByDuration[sortedByDuration.size / 2]
+        /*sequenceOf(1.0, 3.0, 5.0).median()
 
-    private fun filterMedianResponse(): Function<List<NtpTiming>, NtpTiming> {
-        return Function { ntpTimings ->
-            val sortedByDuration = ntpTimings
-                    .sortedBy(NtpTiming::delay)
+        sort by clock offset and pick median?
 
-            sortedByDuration[sortedByDuration.size / 2]
-        }
+        ntpTimings
+                .asSequence()
+                .sortedBy(NtpTiming::delay)
+                .medianBy()*/
+
     }
 
     private fun cacheTimingInfo(ntpTiming: NtpTiming) {
