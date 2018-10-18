@@ -1,8 +1,7 @@
 package net.maelbrancke.filip.reactiventp.ntp
 
 import org.apache.commons.net.ntp.NTPUDPClient
-import org.nield.kotlinstatistics.median
-import org.nield.kotlinstatistics.medianBy
+import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.FluxSink
 import reactor.core.publisher.Mono
@@ -14,6 +13,7 @@ import java.net.UnknownHostException
 
 typealias NtpPoolHostName = String
 
+@Service
 class NtpTimer {
 
     companion object {
@@ -36,17 +36,17 @@ class NtpTimer {
         return if (initialized) {
             Mono.just(calculateNow())
         } else {
-            initializeNtp(ntpPoolAddress)
+            doNtpMeasurement(ntpPoolAddress)
                     .map { calculateNow() }
         }
     }
 
-    private fun initializeNtp(ntpPoolAddress: NtpPoolHostName): Mono<NtpTiming> {
+    private fun doNtpMeasurement(ntpPoolAddress: NtpPoolHostName): Mono<NtpTiming> {
         return Flux
                 .just(ntpPoolAddress)
                 .compose(resolveNtpPoolAddressToIpAddresses())
                 .compose(performNtpAlgorithm())
-                .doOnNext { t -> System.out.println("initialized:: $t") }
+                .doOnNext { timing -> System.out.println("Ntp measurement:: $timing") }
                 .next()
     }
 
@@ -127,7 +127,6 @@ class NtpTimer {
     private fun cacheTimingInfo(ntpTiming: NtpTiming) {
         System.out.println("Ntp timing performed: $ntpTiming")
         timingInfo = ntpTiming
-        //isInitialized.onNext(true)
         initialized = true
     }
 

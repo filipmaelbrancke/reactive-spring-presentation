@@ -39,6 +39,9 @@ repositories {
 	mavenCentral()
 }
 
+test {
+	useJUnitPlatform()
+}
 
 dependencies {
 	implementation('org.springframework.boot:spring-boot-starter-webflux')
@@ -47,6 +50,11 @@ dependencies {
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("commons-net:commons-net:3.6")
 	implementation("org.nield:kotlin-statistics:1.1.3")
-	testImplementation('org.springframework.boot:spring-boot-starter-test')
+	testImplementation('org.springframework.boot:spring-boot-starter-test') {
+		exclude module: 'junit'
+	}
+    testCompile("com.nhaarman:mockito-kotlin:1.5.0")
+    testImplementation('org.junit.jupiter:junit-jupiter-api')
+    testRuntimeOnly('org.junit.jupiter:junit-jupiter-engine')
 	testImplementation('io.projectreactor:reactor-test')
 }

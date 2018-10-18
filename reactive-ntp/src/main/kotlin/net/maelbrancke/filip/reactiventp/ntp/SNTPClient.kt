@@ -1,6 +1,7 @@
 package net.maelbrancke.filip.reactiventp.ntp
 
 import org.apache.commons.net.ntp.NTPUDPClient
+import org.springframework.stereotype.Component
 import java.net.InetAddress
 
 /**
@@ -10,18 +11,11 @@ import java.net.InetAddress
  * performance improvements seem negligible after some initial testing (@see NTPUDPClient)
  * https://tools.ietf.org/html/rfc1361
  */
-class SNTP {
-
-    companion object {
-        private val INSTANCE = SNTP()
-
-        fun create(): SNTP {
-            return INSTANCE
-        }
-    }
+@Component
+class SNTPClient {
 
     fun requestTime(ipAddress: InetAddress, timeout: Int): NtpTiming {
-        System.out.println("Requesting SNTP time from $ipAddress")
+        System.out.println("Requesting SNTPClient time from $ipAddress")
         val ntpClient = NTPUDPClient()
         ntpClient.defaultTimeout = timeout
         val timeInfo = ntpClient.getTime(ipAddress)
@@ -29,7 +23,7 @@ class SNTP {
 
         val ntpTiming = NtpTiming(timeInfo.delay, timeInfo.offset)
         ntpClient.close()
-        System.out.println("SNTP timing from $ipAddress :: delay = ${ntpTiming.delay} / offset = ${ntpTiming.localClockOffset}")
+        System.out.println("SNTPClient timing from $ipAddress :: delay = ${ntpTiming.delay} / offset = ${ntpTiming.localClockOffset}")
         return ntpTiming
     }
 }

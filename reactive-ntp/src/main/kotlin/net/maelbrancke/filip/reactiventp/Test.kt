@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Mono
 
 @RestController
-class TestController {
+class TestController(private val ntpTimer: NtpTimer) {
 
     @GetMapping("/api/test")
     fun test(): Mono<Time> {
