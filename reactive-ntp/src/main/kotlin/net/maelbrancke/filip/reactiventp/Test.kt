@@ -11,7 +11,6 @@ class TestController(private val ntpTimer: NtpTimer) {
 
     @GetMapping("/api/test")
     fun test(): Mono<Time> {
-        val ntpTimer = NtpTimer.build()
         return ntpTimer.initialize()
     }
 }

@@ -15,7 +15,6 @@ import java.net.InetAddress
 class SNTPClient {
 
     fun requestTime(ipAddress: InetAddress, timeout: Int): NtpTiming {
-        System.out.println("Requesting SNTPClient time from $ipAddress")
         val ntpClient = NTPUDPClient()
         ntpClient.defaultTimeout = timeout
         val timeInfo = ntpClient.getTime(ipAddress)

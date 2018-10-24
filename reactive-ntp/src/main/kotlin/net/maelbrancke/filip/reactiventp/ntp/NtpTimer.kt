@@ -14,16 +14,16 @@ import java.net.UnknownHostException
 typealias NtpPoolHostName = String
 
 @Service
-class NtpTimer {
+class NtpTimer(private val sntpClient: SNTPClient) {
 
     companion object {
         const val DEFAULT_NTP_POOL = "pool.ntp.org"
 
-        private val INSTANCE = NtpTimer()
+        /*private val INSTANCE = NtpTimer()
 
         fun build(): NtpTimer {
             return INSTANCE
-        }
+        }*/
     }
 
     private var initialized = false
@@ -40,6 +40,15 @@ class NtpTimer {
                     .map { calculateNow() }
         }
     }
+
+    /*private fun sample(ntpPoolAddress: NtpPoolHostName): Mono<NtpTiming> {
+        return Flux
+                .just(ntpPoolAddress)
+                .compose(resolveNtpPoolAddressToIpAddresses())
+                .compose(performNtpAlgorithm())
+                .doOnNext { timing -> calculateTime(timing) }
+                .next()
+    }*/
 
     private fun doNtpMeasurement(ntpPoolAddress: NtpPoolHostName): Mono<NtpTiming> {
         return Flux
@@ -80,16 +89,7 @@ class NtpTimer {
                 .repeat(repeatCount.toLong())
                 .flatMap { ip ->
 
-                    Flux.create<NtpTiming>({ sink ->
-                        System.out.println("requesting time from $ip")
-                        try {
-                            sink.next(requestTime(ip))
-                            sink.complete()
-                        } catch (e:IOException) {
-                            sink.error(e)
-                        }
-                    },
-                            FluxSink.OverflowStrategy.BUFFER)
+                    doSNTPRequest(ip)
                             .subscribeOn(Schedulers.parallel())
                             .doOnError { error: Throwable? -> System.out.println("Error requesting time : $error") }
                             .retry(retryCount.toLong())
@@ -98,6 +98,19 @@ class NtpTimer {
                 .collectList()
                 .map(getTimingWithFastestRoundTrip())
                 .flux()
+    }
+
+    private fun doSNTPRequest(ip: InetAddress): Flux<NtpTiming> {
+        return Flux.create<NtpTiming>({ sink ->
+            System.out.println("requesting time from $ip")
+            try {
+                sink.next(requestTime(ip))
+                sink.complete()
+            } catch (e: IOException) {
+                sink.error(e)
+            }
+        },
+                FluxSink.OverflowStrategy.BUFFER)
     }
 
     private fun getTimingWithFastestRoundTrip(): (List<NtpTiming>) -> NtpTiming = { ntpTimings ->
@@ -109,10 +122,10 @@ class NtpTimer {
     }
 
     private fun filterMedian(): (List<NtpTiming>) -> NtpTiming = { ntpTimings ->
-        val sortedByDuration = ntpTimings
-                .sortedBy(NtpTiming::delay)
+        val sortedByOffset = ntpTimings
+                .sortedBy(NtpTiming::localClockOffset)
 
-        sortedByDuration[sortedByDuration.size / 2]
+        sortedByOffset[sortedByOffset.size / 2]
         /*sequenceOf(1.0, 3.0, 5.0).median()
 
         sort by clock offset and pick median?
