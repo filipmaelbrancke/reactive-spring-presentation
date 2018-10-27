@@ -11,11 +11,13 @@ import java.time.Duration;
 public class ReactiveApplicationTests {
 
     Flux<String> randomClubs() {
-        return Flux.just("FCB", "Roma", "Chelsea", "Manchester", "Bayern");
+        return Flux
+            .just("FCB", "Roma", "Chelsea", "Manchester", "Bayern");
     }
 
     Flux<String> randomPlayers() {
-        return Flux.just("Nainggolan", "Hazard", "Lukaku");
+        return Flux
+            .just("Nainggolan", "Hazard", "Lukaku");
     }
 
     @Test
@@ -25,28 +27,6 @@ public class ReactiveApplicationTests {
                     .skipLast(1)
                     .takeLast(3)
                     .zipWith(randomPlayers(), (club, player) -> player + " in " + club);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
             StepVerifier.create(newPlayersInNewClubs)

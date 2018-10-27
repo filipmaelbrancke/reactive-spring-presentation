@@ -17,17 +17,12 @@ typealias NtpPoolHostName = String
 class NtpTimer(private val sntpClient: SNTPClient) {
 
     companion object {
+
         const val DEFAULT_NTP_POOL = "pool.ntp.org"
 
-        /*private val INSTANCE = NtpTimer()
-
-        fun build(): NtpTimer {
-            return INSTANCE
-        }*/
     }
 
     private var initialized = false
-
     private val retryCount = 50
     private val connectionTimeout = 10_000
     private var timingInfo: NtpTiming? = null
@@ -40,15 +35,6 @@ class NtpTimer(private val sntpClient: SNTPClient) {
                     .map { calculateNow() }
         }
     }
-
-    /*private fun sample(ntpPoolAddress: NtpPoolHostName): Mono<NtpTiming> {
-        return Flux
-                .just(ntpPoolAddress)
-                .compose(resolveNtpPoolAddressToIpAddresses())
-                .compose(performNtpAlgorithm())
-                .doOnNext { timing -> calculateTime(timing) }
-                .next()
-    }*/
 
     private fun doNtpMeasurement(ntpPoolAddress: NtpPoolHostName): Mono<NtpTiming> {
         return Flux
@@ -126,14 +112,10 @@ class NtpTimer(private val sntpClient: SNTPClient) {
                 .sortedBy(NtpTiming::localClockOffset)
 
         sortedByOffset[sortedByOffset.size / 2]
-        /*sequenceOf(1.0, 3.0, 5.0).median()
-
-        sort by clock offset and pick median?
-
-        ntpTimings
+        /* ntpTimings
                 .asSequence()
                 .sortedBy(NtpTiming::delay)
-                .medianBy()*/
+                .medianBy() */
 
     }
 

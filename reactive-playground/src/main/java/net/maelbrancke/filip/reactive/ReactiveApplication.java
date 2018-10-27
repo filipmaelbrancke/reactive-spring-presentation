@@ -1,8 +1,7 @@
 package net.maelbrancke.filip.reactive;
 
 import java.time.Duration;
-import java.util.List;
-import javax.annotation.PostConstruct;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -14,15 +13,13 @@ import org.springframework.data.mongodb.core.CollectionOptions;
 import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
-
-import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
 
 @SpringBootApplication
 public class ReactiveApplication {
@@ -54,6 +51,26 @@ class RentController {
     }
 }*/
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @Slf4j
 @RestController
 class ReactiveRentController {
@@ -74,21 +91,36 @@ class BookingController {
         this.bookingRepository = bookingRepository;
     }
 
-    /*@GetMapping("bookings")
-    List<Booking> bookings() {
-        return bookingRepository.findAll().collectList().block();
-    }*/
-
     @GetMapping("bookings")
     Flux<Booking> bookings() {
         return bookingRepository.findAll().log();
     }
 
-    //@GetMapping(value = "bookingstream", produces = MediaType.APPLICATION_STREAM_JSON_VALUE)
+
+
+
+
+
+
+
+
+
+
+
     @GetMapping(value = "bookingstream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     Flux<Booking> bookingsStream() {
         return bookingRepository.findBookingsBy().log();
     }
+
+
+
+
+
+
+
+
+
+
 
     @PostMapping("bookings")
     Flux<Booking> bookings(@RequestBody Flux<Booking> bookings) {
@@ -96,22 +128,6 @@ class BookingController {
     }
 
 
-//    public static void main(String[] args) {
-//        WebClient client = WebClient.create("http://localhost:8080");
-//
-//        Flux<Booking> bookings
-//                = Flux.interval(Duration.ofSeconds(1)).map(i -> new Booking());
-//
-//        client
-//                .post()
-//                .uri("/bookings")
-//                .contentType(MediaType.APPLICATION_STREAM_JSON)
-//                .body(bookings, Booking.class)
-//                .retrieve()
-//                .bodyToFlux(Booking.class)
-//                .blockLast();
-//
-//    }
 
 
 }
