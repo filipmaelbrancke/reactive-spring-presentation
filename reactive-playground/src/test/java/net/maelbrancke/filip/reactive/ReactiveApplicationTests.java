@@ -1,7 +1,8 @@
 package net.maelbrancke.filip.reactive;
 
-import org.junit.Ignore;
-import org.junit.Test;
+
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -44,7 +45,7 @@ public class ReactiveApplicationTests {
         return Mono.delay(Duration.ofDays(days)).map(i -> decision);
     }
 
-    @Ignore
+    @Disabled
     @Test
     public void longRunningOperationTest() throws Exception {
 
@@ -74,6 +75,7 @@ public class ReactiveApplicationTests {
             .verifyComplete();
     }
 
+    @Disabled
     @Test
     public void justShowingSomething() throws InterruptedException {
         Mono.just("test")

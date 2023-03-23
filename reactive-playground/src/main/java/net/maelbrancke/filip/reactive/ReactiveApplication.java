@@ -1,16 +1,15 @@
 package net.maelbrancke.filip.reactive;
 
-import java.time.Duration;
-import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.mongo.embedded.EmbeddedMongoAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.mongodb.core.CollectionOptions;
-import org.springframework.data.mongodb.core.MongoOperations;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,18 +20,22 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-@SpringBootApplication
+import java.time.Duration;
+
+@SpringBootApplication(exclude={EmbeddedMongoAutoConfiguration.class})
 public class ReactiveApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(ReactiveApplication.class, args);
     }
 
+
+
     @Bean
-    CommandLineRunner commandLineRunner(MongoOperations mongoOperations) {
+    CommandLineRunner commandLineRunner(MongoTemplate mongoTemplate) {
         return args -> {
-            mongoOperations.dropCollection(Booking.class);
-            mongoOperations.createCollection(Booking.class, CollectionOptions.empty().capped().size(1000000).maxDocuments(100));
+            mongoTemplate.dropCollection(Booking.class);
+            mongoTemplate.createCollection(Booking.class, CollectionOptions.empty().capped().size(1000000).maxDocuments(100));
         };
     }
 
