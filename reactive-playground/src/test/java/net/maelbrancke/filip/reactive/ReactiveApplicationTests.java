@@ -7,6 +7,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 
 public class ReactiveApplicationTests {
 
@@ -71,6 +72,18 @@ public class ReactiveApplicationTests {
             .expectNoEvent(Duration.ofDays(10))
             .expectNext("no")
             .verifyComplete();
+    }
+
+    @Test
+    public void justShowingSomething() throws InterruptedException {
+        Mono.just("test")
+                .delayElement(Duration.of(10, ChronoUnit.SECONDS))
+                .doOnNext(s -> System.out.println("first output"))
+                .subscribe();
+
+        System.out.println("second output");
+
+        Thread.sleep(10000);
     }
 
 }

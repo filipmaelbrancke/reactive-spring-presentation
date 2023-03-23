@@ -39,6 +39,7 @@ public class ReactiveApplication {
 
 }
 
+
 /*@Slf4j
 @RestController
 class RentController {
@@ -46,11 +47,10 @@ class RentController {
     @GetMapping("/rents/{machine}")
     Boolean canWeRent(@PathVariable String machine) throws InterruptedException {
         log.info("can we rent " + machine);
-        TimeUnit.SECONDS.sleep(1);
+        TimeUnit.SECONDS.sleep(1);     //  == Thread.sleep(1 second);
         return false;
     }
 }*/
-
 
 
 
@@ -92,8 +92,9 @@ class BookingController {
     }
 
     @GetMapping("bookings")
-    Flux<Booking> bookings() {
-        return bookingRepository.findAll().log();
+     Flux<Booking> bookings() {
+
+            return bookingRepository.findAll();
     }
 
 
@@ -109,7 +110,7 @@ class BookingController {
 
     @GetMapping(value = "bookingstream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     Flux<Booking> bookingsStream() {
-        return bookingRepository.findBookingsBy().log();
+        return bookingRepository.findBookingsBy();
     }
 
 
@@ -146,7 +147,7 @@ class Booker {
     public void onApplicationEvent(ContextRefreshedEvent event) {
         log.info("started");
 
-        Flux.interval(Duration.ofSeconds(10), Duration.ofSeconds(1))
+        Flux.interval(Duration.ofSeconds(10), Duration.ofSeconds(5))
             .map(i -> new Booking("test" + i))
             .flatMap(bookingRepository::save)
             .subscribe();
